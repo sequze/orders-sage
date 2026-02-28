@@ -1,0 +1,16 @@
+[project]
+name = "orders-shared"
+version = "0.1.0"
+requires-python = ">=3.12,<4.0"
+description = "Shared library for orders delivery services."
+dependencies = [
+  "fastapi >=0.122.0,<1",
+  "starlette >=0.49.3,<1",
+]
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shared"]

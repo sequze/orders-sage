@@ -1,0 +1,124 @@
+services:
+  order_api: &order_main_app
+    build:
+      context: .
+      dockerfile: order_service/Dockerfile
+    image: order_service:${ORDER_SERVICE_VERSION:-latest}
+    restart: always
+    env_file:
+      - path: order_service/.env
+        required: false
+    depends_on:
+      order_db:
+        condition: service_healthy
+      order_migrator:
+        condition: service_completed_successfully
+    environment:
+      ORDER_SERVICE_HOST: 0.0.0.0
+      ORDER_SERVICE_DB_HOST: order_service-db
+      ORDER_SERVICE_DB_PORT: 5432
+      ORDER_SERVICE_DB_USER: order_service
+      ORDER_SERVICE_DB_PASS: order_service
+      ORDER_SERVICE_DB_BASE: order_service
+    ports:
+      - "8000:8000"
+
+  order_db:
+    image: postgres:18.1-bookworm
+    hostname: order_service-db
+    environment:
+      POSTGRES_PASSWORD: "order_service"
+      POSTGRES_USER: "order_service"
+      POSTGRES_DB: "order_service"
+    ports:
+      - "5432:5432"
+    volumes:
+      - order_service-db-data:/var/lib/postgresql
+    restart: always
+    healthcheck:
+      test: pg_isready -U order_service
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  order_migrator:
+    image: order_service:${ORDER_SERVICE_VERSION:-latest}
+    restart: "no"
+    command: alembic upgrade head
+    env_file:
+      - path: order_service/.env
+        required: false
+    environment:
+      ORDER_SERVICE_HOST: 0.0.0.0
+      ORDER_SERVICE_DB_HOST: order_service-db
+      ORDER_SERVICE_DB_PORT: 5432
+      ORDER_SERVICE_DB_USER: order_service
+      ORDER_SERVICE_DB_PASS: order_service
+      ORDER_SERVICE_DB_BASE: order_service
+    depends_on:
+      order_db:
+        condition: service_healthy
+
+  product_api: &product_main_app
+    build:
+      context: .
+      dockerfile: product_service/Dockerfile
+    image: product_service:${PRODUCT_SERVICE_VERSION:-latest}
+    restart: always
+    env_file:
+      - path: product_service/.env
+        required: false
+    depends_on:
+      product_db:
+        condition: service_healthy
+      product_migrator:
+        condition: service_completed_successfully
+    environment:
+      PRODUCT_SERVICE_HOST: 0.0.0.0
+      PRODUCT_SERVICE_DB_HOST: product_service-db
+      PRODUCT_SERVICE_DB_PORT: 5432
+      PRODUCT_SERVICE_DB_USER: product_service
+      PRODUCT_SERVICE_DB_PASS: product_service
+      PRODUCT_SERVICE_DB_BASE: product_service
+    ports:
+      - "8001:8000"
+
+  product_db:
+    image: postgres:18.1-bookworm
+    hostname: product_service-db
+    environment:
+      POSTGRES_PASSWORD: "product_service"
+      POSTGRES_USER: "product_service"
+      POSTGRES_DB: "product_service"
+    volumes:
+      - product_service-db-data:/var/lib/postgresql
+    restart: always
+    healthcheck:
+      test: pg_isready -U product_service
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  product_migrator:
+    image: product_service:${PRODUCT_SERVICE_VERSION:-latest}
+    restart: "no"
+    command: alembic upgrade head
+    env_file:
+      - path: product_service/.env
+        required: false
+    environment:
+      PRODUCT_SERVICE_HOST: 0.0.0.0
+      PRODUCT_SERVICE_DB_HOST: product_service-db
+      PRODUCT_SERVICE_DB_PORT: 5432
+      PRODUCT_SERVICE_DB_USER: product_service
+      PRODUCT_SERVICE_DB_PASS: product_service
+      PRODUCT_SERVICE_DB_BASE: product_service
+    depends_on:
+      product_db:
+        condition: service_healthy
+
+volumes:
+  order_service-db-data:
+    name: order_service-db-data
+  product_service-db-data:
+    name: product_service-db-data
